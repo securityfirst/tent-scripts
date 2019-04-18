@@ -13,12 +13,12 @@ import (
 
 	"github.com/go-tent/tent/item"
 
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/storage/memory"
 	"github.com/go-tent/tent/core"
 	"github.com/go-tent/tent/source"
 	"github.com/go-tent/tent/transifex"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
 var resourceMap map[string]*transifex.Resource
@@ -142,7 +142,6 @@ func handleChildren(cat *core.Category, prefix []string) error {
 						case c.Check != "":
 							dst = &c.Check
 						default:
-							fmt.Println(checks.List)
 							return nil, fmt.Errorf("Invalid check: %v", i)
 						}
 						if trad, ok := m[*dst]; ok {
@@ -320,7 +319,7 @@ func makeDifficultyTxs() {
 		if s["translated"].Percentage < minTranslated {
 			continue
 		}
-			translation, err := srcClient.GetTranslation(slug, lang)
+		translation, err := srcClient.GetTranslation(slug, lang)
 		if err != nil {
 			log.Fatalln(lang, err)
 		}

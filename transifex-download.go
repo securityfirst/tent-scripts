@@ -41,6 +41,13 @@ func TransifexDownload() {
 	if err := root.Decode(&txsrc); err != nil {
 		log.Fatalln(err)
 	}
+	for _, cat := range root.Sub {
+		for l := range links {
+			if err := checkLink(&cat, l); err != nil {
+				log.Printf("link: %s %s - %s", cat.ID, l, err)
+			}
+		}
+	}
 	dst := destination.NewFile(outDir)
 	prefix := make([]string, 0, 4)
 	for _, cat := range root.Sub {
@@ -78,14 +85,21 @@ func (t transifexSource) run(src source.Source, resources map[string]transifex.R
 		if _, ok := i18n[path.Ext(name)]; !ok {
 			continue
 		}
-		slug := resources[name].Slug
+		r, ok := resources[name]
+		if !ok {
+			log.Println(name, "not found!")
+			continue
+		}
+		//log.Println(r.Slug)
 		for _, l := range langs {
-			b, err := dstClient.GetTranslationFile(slug, l)
+			b, err := dstClient.GetTranslationFile(r.Slug, l)
 			if err != nil {
+
 				t <- msg{nil, fmt.Errorf("%s[%s] %s", name, l, err)}
 				return
 			}
-			t <- msg{item.Memory{ID: "/" + l + "/" + name, Contents: b}, nil}
+			body := linkFinder.ReplaceAllStringFunc(string(b), replaceLinks)
+			t <- msg{item.Memory{ID: "/" + l + "/" + name, Contents: []byte(body)}, nil}
 		}
 	}
 }

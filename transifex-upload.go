@@ -13,6 +13,17 @@ import (
 var deleteResources bool
 
 func TransifexUpload() {
+	ll, err := dstClient.Languages()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	var langs = make([]string, 0, len(ll))
+	for _, l := range ll {
+		if l.LanguageCode == "lg" {
+			continue
+		}
+		langs = append(langs, l.LanguageCode)
+	}
 	list, err := dstClient.ListResources()
 	if err != nil {
 		log.Fatalln(err)
@@ -47,7 +58,7 @@ func TransifexUpload() {
 			log.Fatalf("[%s] Error: %s.", name, err)
 		}
 
-		if err := handleItem(name, ext, r, resources); err != nil {
+		if err := handleItem(name, ext, r, langs, resources); err != nil {
 			log.Printf("[%s] Error: %s.", name, err)
 			errors = append(errors, [2]string{name, err.Error()})
 			continue
@@ -58,7 +69,7 @@ func TransifexUpload() {
 		log.Printf("*** Extra Resources ***")
 		for _, r := range resources {
 			if deleteResources {
-							if err := dstClient.DeleteResource(r.Slug); err != nil {
+				if err := dstClient.DeleteResource(r.Slug); err != nil {
 					log.Printf("[%s] Error: %s.", r.Slug, err)
 					continue
 				}
@@ -75,7 +86,7 @@ func TransifexUpload() {
 	}
 }
 
-func handleItem(name, ext string, r io.ReadCloser, resources map[string]transifex.Resource) error {
+func handleItem(name, ext string, r io.ReadCloser, langs []string, resources map[string]transifex.Resource) error {
 	defer r.Close()
 	contents, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -83,7 +94,7 @@ func handleItem(name, ext string, r io.ReadCloser, resources map[string]transife
 	}
 	slug := makeSlug(name)
 	if _, ok := resources[name]; !ok {
-			_, err = dstClient.CreateResource(transifex.UploadResourceRequest{
+		_, err = dstClient.CreateResource(transifex.UploadResourceRequest{
 			BaseResource:       transifex.BaseResource{Slug: slug, Name: name, I18nType: i18n[ext]},
 			AcceptTranslations: true,
 			Content:            string(contents),
@@ -98,15 +109,24 @@ func handleItem(name, ext string, r io.ReadCloser, resources map[string]transife
 		if l.SkipFile(name) {
 			continue
 		}
-			strs, err := dstClient.GetStrings(slug, projectLang)
+		strs, err := dstClient.GetStrings(slug, projectLang)
 		if err != nil {
 			return err
 		}
 		for _, s := range strs {
-					log.Println(s.Key, l.KeyTags(s.Key))
-			if err := dstClient.SetStringTags(slug, s.StringHash, l.KeyTags(s.Key)...); err != nil {
+			tags := l.KeyTags(s.Key)
+			if err := dstClient.SetStringTags(slug, s.StringHash, tags...); err != nil {
 				return err
 			}
+			if len(tags) == 0 || tags[0] != "locked" {
+				continue
+			}
+			for _, l := range langs {
+				if err := dstClient.TranslateString(slug, s.StringHash, l, s.SourceString); err != nil {
+					return err
+				}
+			}
+			log.Printf("[%s] {%s}", name, s.Key)
 		}
 	}
 	return nil
