@@ -52,6 +52,7 @@ func TransifexDownload() {
 	prefix := make([]string, 0, 4)
 	for _, cat := range root.Sub {
 		prefix = append(prefix[:1], cat.ID)
+
 		for _, cat := range cat.Sub {
 			prefix = append(prefix[:2], cat.ID)
 			WriteCat(dst, prefix, &cat)
@@ -79,7 +80,7 @@ func (t transifexSource) run(src source.Source, resources map[string]transifex.R
 	for i, err := src.Next(); i != nil; i, err = src.Next() {
 		if err != nil {
 			t <- msg{nil, err}
-			return
+			continue
 		}
 		name := strings.TrimPrefix(i.Name(), projectLang+"/")
 		if _, ok := i18n[path.Ext(name)]; !ok {
@@ -90,13 +91,12 @@ func (t transifexSource) run(src source.Source, resources map[string]transifex.R
 			log.Println(name, "not found!")
 			continue
 		}
-		//log.Println(r.Slug)
+		log.Println(r.Slug)
 		for _, l := range langs {
 			b, err := dstClient.GetTranslationFile(r.Slug, l)
 			if err != nil {
-
 				t <- msg{nil, fmt.Errorf("%s[%s] %s", name, l, err)}
-				return
+				continue
 			}
 			body := linkFinder.ReplaceAllStringFunc(string(b), replaceLinks)
 			t <- msg{item.Memory{ID: "/" + l + "/" + name, Contents: []byte(body)}, nil}
@@ -105,6 +105,12 @@ func (t transifexSource) run(src source.Source, resources map[string]transifex.R
 }
 
 func (t transifexSource) Next() (item.Item, error) {
-	v := <-t
-	return v.Item, v.error
+	for {
+		v := <-t
+		if v.error != nil {
+			log.Println("tx next", v)
+			continue
+		}
+		return v.Item, nil
+	}
 }

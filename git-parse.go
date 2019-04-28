@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -326,7 +325,12 @@ func WriteCat(dst destination.Destination, prefix []string, cat *core.Category) 
 	if err := dst.Create(context.Background(), item); err != nil {
 		log.Fatal(prefix, item, err)
 	}
+	count := .0
 	for _, cmp := range cat.Components {
+		if s, ok := cmp.(*core.Segment); ok && s.Index == 0 {
+			count++
+			s.Index = count
+		}
 		item, err := core.NewItem(prefix, cmp)
 		if err != nil {
 			log.Fatal(prefix, cmp, err)
