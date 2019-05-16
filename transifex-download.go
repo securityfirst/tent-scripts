@@ -83,7 +83,7 @@ func (t transifexSource) run(src source.Source, resources map[string]transifex.R
 			continue
 		}
 		name := strings.TrimPrefix(i.Name(), projectLang+"/")
-		if _, ok := i18n[path.Ext(name)]; !ok {
+		if _, ok := i18n[path.Ext(name)]; !ok || name == i.Name() {
 			continue
 		}
 		r, ok := resources[name]
@@ -98,7 +98,9 @@ func (t transifexSource) run(src source.Source, resources map[string]transifex.R
 				t <- msg{nil, fmt.Errorf("%s[%s] %s", name, l, err)}
 				continue
 			}
-			body := linkFinder.ReplaceAllStringFunc(string(b), replaceLinks)
+			body := string(b)
+			body = strings.ReplaceAll(body, "] (", "](")
+			body = linkFinder.ReplaceAllStringFunc(body, replaceLinks)
 			t <- msg{item.Memory{ID: "/" + l + "/" + name, Contents: []byte(body)}, nil}
 		}
 	}

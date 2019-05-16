@@ -123,7 +123,7 @@ func checkLink(root *core.Category, link string) error {
 }
 
 func replaceLinks(s string) string {
-	v, ok := linkFix[s[len(linkPrefix):]]
+	v, ok := linkFix[strings.ReplaceAll(s, " ", "")[len(linkPrefix):]]
 	if ok {
 		s = linkPrefix + v
 	}
